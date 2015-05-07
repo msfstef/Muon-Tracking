@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Set to false to skip making 3D plot
-do3D = True
+do3D = False
 
 # Features of CMS detector
 B = 3.8 # Magnetic field strength, units: Tesla
@@ -21,8 +21,8 @@ z_sol = 3.00 # Length of solenoid volume, units: meters
 r_layers = [0.04,0.07,0.11,0.26,0.32,0.43,0.62,0.71,0.79,0.88,0.97,1.07]
 
 # initial particle momentum
-pz = 1. # units GeV/c
-pt = 20. # units: GeV/c
+pz = 0. # units GeV/c
+pt = 2. # units: GeV/c
 
 # initial particle position
 x0 = 0. # units: meters
@@ -30,7 +30,8 @@ y0 = 0. # units: meters
 z0 = 0. # units: meters
 
 # initial angle in x-y plane
-phi0 = 0.
+phi0 = 0 - np.pi/2
+q = 1
 
 # Create 3D axes
 if do3D:
@@ -52,22 +53,22 @@ ax2.set_xlim(-3.2,3.2)
 ax2.set_ylim(-3.2,3.2)
 
 # Create solenoid points
-x=np.linspace(-r_sol, r_sol, 100)
-z=np.linspace(-z_sol, z_sol, 100)
-Xc, Zc=np.meshgrid(x, z)
-Yc = np.sqrt(r_sol**2-Xc**2)
-y = np.sqrt(r_sol**2-x**2)
+x_grid=np.linspace(-r_sol, r_sol, 100)
+z_grid=np.linspace(-z_sol, z_sol, 100)
+Xc, Zc=np.meshgrid(x_grid, z_grid)
+Yc = np.sqrt(r_sol*r_sol-Xc*Xc)
+y_grid = np.sqrt(r_sol*r_sol-x_grid*x_grid)
 
 # Plot solenoid points in 2d
-ax2.plot(x,y,color='b',label='CMS solenoid')
-ax2.plot(x,-y,color='b')
+ax2.plot(x_grid,y_grid,color='b',label='CMS solenoid')
+ax2.plot(x_grid,-y_grid,color='b')
 
 # Plot solenoid points as mesh in 3d
 if do3D:
   ax3.plot_surface(Xc, Yc, Zc,  rstride=4, cstride=4, color='b', alpha=0.2)
   ax3.plot_surface(Xc, -Yc, Zc,  rstride=4, cstride=4, color='b', alpha=0.2)
 
-# Derivactions of motion in magnetic field and helix parameterization
+# Derivations of motion in magnetic field and helix parameterization
 # http://www.physics.iitm.ac.in/~sercehep2013/track2_Gagan_Mohanty.pdf
 
 # Calculate radius of curvature
@@ -77,10 +78,10 @@ Rc = pt / (0.3*B) # units: meters
 ldip = np.arctan(pz/pt)
 
 # Create parameters of helix
-s = np.linspace(0, 0 + 1 * np.pi, 100000)
-z = s*np.sin(ldip) + z0
-x = x0 + Rc*(np.cos(phi0+s*np.cos(ldip)/Rc) - np.cos(phi0))
-y = y0 + Rc*(np.sin(phi0+s*np.cos(ldip)/Rc) - np.sin(phi0))
+s = np.linspace(0, 2*np.pi*Rc, 100000)  # path length
+z = s*np.sin(ldip)  + z0
+x = x0 + q*Rc*(np.cos(phi0+q*s*np.cos(ldip)/Rc) - np.cos(phi0))
+y = y0 + q*Rc*(np.sin(phi0+q*s*np.cos(ldip)/Rc) - np.sin(phi0))
 
 xhit = []
 yhit = []
