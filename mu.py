@@ -22,19 +22,21 @@ z_sol = 3.00 # Length of solenoid volume, units: meters
 r_layers = [0.04,0.07,0.11,0.26,0.32,0.43,0.62,0.71,0.79,0.88,0.97,1.07]
 
 # initial particle momentum
-pz = 0. # units GeV/c
-pt = 2 # units: GeV/c
+pz = 0. # units: GeV/c
+pt = 3. # units: GeV/c
 
 # initial particle position
-x0 = -0.1 # units: meters
-y0 = -0.1 # units: meters
+x0 = 0. # units: meters
+y0 = 0. # units: meters
 z0 = 0. # units: meters
 
 
 # initial angle in x-y plane
 a = 0
-phi0 = a*(np.pi/2) - np.pi/2
-q = 1
+phi0 = a*(np.pi/2) - np.pi/2 # 90 degree conventional correction
+
+# Sense of direction determined by charge (q = -1 muon, q = 1 antimuon)
+q = -1
 
 # Create 3D axes
 if do3D:
@@ -101,8 +103,8 @@ ldip = np.arctan(pz/pt)
 # Create parameters of helix
 s = np.linspace(0, 16*np.pi*Rc, 100000)  # path length
 z = s*np.sin(ldip)  + z0
-x = x0 + q*Rc*(np.cos(phi0+q*s*np.cos(ldip)/Rc) - np.cos(phi0))
-y = y0 + q*Rc*(np.sin(phi0+q*s*np.cos(ldip)/Rc) - np.sin(phi0))
+x = x0 -q*Rc*(np.cos(phi0 -q*s*np.cos(ldip)/Rc) - np.cos(phi0))
+y = y0 -q*Rc*(np.sin(phi0 -q*s*np.cos(ldip)/Rc) - np.sin(phi0))
 
 
 
@@ -134,14 +136,16 @@ for i in range(len(r)):
     
 #~ Create parameters of second part of helix
 s = np.linspace(0, 16*np.pi*Rc, 100000)  # path length
-tangent = (x0-x_fin - q*Rc*np.cos(phi0))/(y_fin - y0 + q*Rc*np.sin(phi0))
-if (q*y_fin) < 0 :
-    phi1 = np.arctan(tangent) + 3*np.pi/2
+tangent_up = (x0-x_fin + q*Rc*np.cos(phi0))
+tangent_down = (y_fin - y0 - q*Rc*np.sin(phi0))
+if q > 0 :
+    phi1 = np.arctan2(tangent_up,tangent_down) + 3*np.pi/2
 else:
-    phi1 = np.arctan(tangent) + np.pi/2
+    phi1 = np.arctan2(tangent_up,tangent_down) + np.pi/2
+    
 z2 = s*np.sin(ldip)  + z_fin
-x2 = x_fin - q*Rc*(np.cos(phi1 -q*s*np.cos(ldip)/Rc) - np.cos(phi1))
-y2 = y_fin - q*Rc*(np.sin(phi1 -q*s*np.cos(ldip)/Rc) - np.sin(phi1))
+x2 = x_fin + q*Rc*(np.cos(phi1 +q*s*np.cos(ldip)/Rc) - np.cos(phi1))
+y2 = y_fin + q*Rc*(np.sin(phi1 +q*s*np.cos(ldip)/Rc) - np.sin(phi1))
 
 #~ don't plot second helix beyond muon solenoid volume
 r2 = np.sqrt(x2*x2+y2*y2)
