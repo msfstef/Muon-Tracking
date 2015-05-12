@@ -3,7 +3,6 @@
 # May 2015
 # A starting script to draw the CMS solenoid in 2d and 3d and plot a track and hits
 
-#laolala
 
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
@@ -11,9 +10,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Features of CMS detector
-B = 3.8 # Magnetic field strength, units: Tesla
+B = 3.8 # Magnetic field strength in 1st solenoid, units: Tesla
+B2 = 2.0 # Magnetic field strength in 2nd solenoid, units: Tesla
 r_sol = 2.950 #~ Radius of solenoid volume, units: meters
-r_sol2 = r_sol + 3. # Radius of muon ironman tracker, units: meters
+r_sol2 = r_sol + 3.550 # Radius of muon ironman tracker, units: meters
 z_sol = 3.00 # Length of solenoid volume, units: meters
 
 # Tracker layers (z = 0) [units: m]
@@ -147,14 +147,25 @@ def path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, xhit, yhit, zhit
 			z_path= np.append(z_path, z[:i])
 			return x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint
 			break
+		if layer == 0 and abs(z[i]) > z_sol:
+		    print "Truncating at %ith point which has (r,z)=(%f,%f) (x,y)=(%f,%f) z/r=%f pz/pt=%f Rc=%f" % (i,r[i],z[i],x[i],y[i],z[i]/r[i],pz/pt,Rc)
+                    crosspoint = i
+                    x_fin = x[i]
+                    y_fin = y[i]
+                    z_fin = z[i]
+                    x_path= np.append(x_path, x[:i])
+                    y_path= np.append(y_path, y[:i])
+                    z_path= np.append(z_path, z[:i])
+                    return x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint
+                    break
 		
 		if layer == 1 and  r[i] > r_sol2 or abs(z[i]) > z_sol:
-			print "Truncating at %ith point which has (r,z)=(%f,%f) (x,y)=(%f,%f) z/r=%f pz/pt=%f Rc=%f" % (i+crosspoint,r[i],z[i],x[i],y[i],z[i]/r[i],pz/pt,Rc)
-			x_path= np.append(x_path, x[:i])
-			y_path= np.append(y_path, y[:i])
-			z_path= np.append(z_path, z[:i])
-			return x_path, y_path, z_path, xhit, yhit, zhit
-			break
+		    print "Truncating at %ith point which has (r,z)=(%f,%f) (x,y)=(%f,%f) z/r=%f pz/pt=%f Rc=%f" % (i+crosspoint,r[i],z[i],x[i],y[i],z[i]/r[i],pz/pt,Rc)
+		    x_path= np.append(x_path, x[:i])
+		    y_path= np.append(y_path, y[:i])
+		    z_path= np.append(z_path, z[:i])
+		    return x_path, y_path, z_path, xhit, yhit, zhit
+		    break
 			
 	
 	
@@ -162,14 +173,18 @@ def path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, xhit, yhit, zhit
 def particle_path(x0, y0, z0, phi0, q, pt, pz, xhit, yhit, zhit, x_path, y_path, z_path):
 	# Calculate radius of curvature
 	Rc = pt / (0.3*B) # units: meters
+	Rc2 = pt / (0.3*B2) # units: meters
 	# Calculate dip angle
 	ldip = np.arctan(pz/pt)
 	layer = 0
 	x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint = path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, xhit, yhit, zhit, x_path, y_path, z_path, crosspoint=0)
-	layer = 1
-	phi1 = phi_calc(Rc, x_fin, y_fin, phi0, x0, y0, q)
-	x_path, y_path, z_path, xhit, yhit, zhit = path_creation(Rc, ldip, x_fin, y_fin, z_fin, phi1, -q, pt, pz, layer, xhit, yhit, zhit, x_path, y_path, z_path, crosspoint)
-	return x_path, y_path, z_path, xhit, yhit, zhit
+	if np.sqrt(x_fin*x_fin + y_fin*y_fin) < r_sol:
+	    return x_path, y_path, z_path, xhit, yhit, zhit
+	else :
+	   layer = 1
+	   phi1 = phi_calc(Rc, x_fin, y_fin, phi0, x0, y0, q)
+	   x_path, y_path, z_path, xhit, yhit, zhit = path_creation(Rc2, ldip, x_fin, y_fin, z_fin, phi1, -q, pt, pz, layer, xhit, yhit, zhit, x_path, y_path, z_path, crosspoint)
+	   return x_path, y_path, z_path, xhit, yhit, zhit
 
 #Plots particle path and hits in cross-section of detector.
 def plot_path(x_path, y_path, z_path, xhit, yhit, zhit, ax2):
