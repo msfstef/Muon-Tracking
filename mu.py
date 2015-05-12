@@ -3,6 +3,8 @@
 # May 2015
 # A starting script to draw the CMS solenoid in 2d and 3d and plot a track and hits
 
+#laolala
+
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
