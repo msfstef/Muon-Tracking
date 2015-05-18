@@ -17,7 +17,7 @@ z_sol = 3.00 # Length of solenoid, units: meters
 
 # Tracker layers (z = 0) [units: m]
 #~ Approximate locations, to be improved.
-r_tracker = [0.04,0.07,0.11,0.26,0.32,0.43,0.62,0.71,0.79,0.88,0.97,1.07,]
+r_tracker = [0.04,0.07,0.11,0.26,0.32,0.43,0.62,0.71,0.79,0.88,0.97,1.07]
 r_mb= [4.00,4.10,4.15,4.88,4.95,5.05,6.09,6.21,6.31,7.22,7.29,7.35]
 r_layers = np.append(r_tracker, r_mb)
 
