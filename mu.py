@@ -12,14 +12,26 @@ import matplotlib.pyplot as plt
 B = 3.8 # Magnetic field strength in 1st solenoid, units: Tesla
 B2 = 2.0 # Magnetic field strength in 2nd solenoid, units: Tesla. #~ Approximate, to be improved
 r_sol = 2.950 # Radius of 1st solenoid, units: meters
-r_sol2 = r_sol + 3.550 # Radius of 2nd solenoid, units: meters
+r_sol2 = 7.500 # Radius of 2nd solenoid, units: meters
 z_sol = 3.00 # Length of solenoid, units: meters
 
 # Tracker layers (z = 0) [units: m]
 #~ Approximate locations, to be improved.
-r_tracker = [0.04,0.07,0.11,0.26,0.32,0.43,0.62,0.71,0.79,0.88,0.97,1.07]
-r_mb= [4.00,4.10,4.15,4.88,4.95,5.05,6.09,6.21,6.31,7.22,7.29,7.35]
-r_layers = np.append(r_tracker, r_mb)
+r_pixel = [0.04,0.07,0.11]
+r_tib=[0.26,0.32,0.43,0.62]
+r_tob=[0.71,0.79,0.88,0.97,1.07,1.14]
+r_tracker=np.append(np.append(r_pixel,r_tib), r_tob)
+
+
+r_mb1= [4.20,4.22,4.24,4.26,4.42,4.44,4.46,4.48]
+r_mb2= [5.00,5.02,5.04,5.06,5.24,5.26,5.28,5.30]
+r_mb3= [6.08,6.10,6.12,6.14,6.32,6.34,6.36,6.38]
+r_mb4= [7.10,7.12,7.14,7.16,7.34,7.36,7.38,7.40]
+
+r_drift=np.append(np.append(r_mb1,r_mb2),np.append(r_mb3,r_mb4))
+
+
+r_layers = np.append(r_tracker, r_drift)
 
 # Initial particle momentum
 # pz = momentum in z direction, units: GeV/c
@@ -192,6 +204,7 @@ def hit_calc(xhit, yhit, zhit, x_path, y_path, z_path, r_layers):
                 xhit.append(0.5*(x_path[i]+x_path[i-1]))
                 yhit.append(0.5*(y_path[i]+y_path[i-1]))
                 zhit.append(0.5*(z_path[i]+z_path[i-1]))
+                break
     return xhit, yhit, zhit
 		
 
