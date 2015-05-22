@@ -103,7 +103,7 @@ def smear_data(rhit, phihit, zhit, tube):
             y_smear = np.append(y_smear, temp[2])
             z_smear = np.append(z_smear, temp[3])
     if tube == 2:
-        if rhit[0] > r_pixel[0]: temp = smear_func(len(r_tracker2)+1, len(det_layers[4]), err_layers[3], rhit, phihit, zhit)
+        if rhit[0] > r_pixel[0]: temp = smear_func(len(r_tracker2), len(det_layers[4]), err_layers[3], rhit, phihit, zhit)
         else: temp = smear_func(len(r_tracker), len(det_layers[4]), err_layers[3], rhit, phihit, zhit)
         x_smear = np.append(x_smear, temp[1])
         y_smear = np.append(y_smear, temp[2])
@@ -210,7 +210,7 @@ def plot_data(pt_i=3, pt_f=20, point_num=100, iter_num=50): #Does not work if mu
     axarr[1].plot(pt_actual, pt_err2, 'b.' , label="$p_t$ Error")
     axarr[1].plot(pt_actual, pt2_dev, 'r.' , label="$p_t$ Deviation")
     plt.xlabel('$p_t$')
-    plt.ylabel('$\Delta p_t$') 
+    plt.ylabel('$\Delta p_t$')
     plt.legend(loc='best',labelspacing=0.1,numpoints=1)
     plt.grid()
     plt.title('$p_t$ error vs $p_t$')
