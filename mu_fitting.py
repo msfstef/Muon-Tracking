@@ -54,11 +54,7 @@ def smear_func(initial, final, err, rhit, phihit, zhit):
     z_smear = np.random.normal(zhit[i:f], err[1])
     return f, x_smear, y_smear, z_smear
     
-<<<<<<< HEAD
     
-=======
-
->>>>>>> origin/master
 #Calculates the actual hits of the particle in case its initial position is
 #beyond the innermost tracker.
 def determine_start(rhit):
@@ -88,10 +84,6 @@ def determine_start(rhit):
                     if rhit[0]<(r_drift[j]+0.01):
                         r_drift_new = np.append(r_drift_new, r_drift[j])
                 return r_pixel_new, r_tib_new, r_tob_new, r_drift_new
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/master
 
 #Smears each data point in the appropriate way (data from multiple trackers).    
 def smear_data(rhit, phihit, zhit, tube):
@@ -169,32 +161,22 @@ def plot_data_circle(x,y, xc, yc, R):
 #Calculates transverse momentum by fitting circular path in smeared data.
 def pt_calc(rhit, phihit, zhit,tube):
     x_data, y_data, z_data = smear_data(rhit, phihit, zhit, tube)
-<<<<<<< HEAD
     if len(x_data)>0: xc, yc, Rc = leastsq_circle(x_data, y_data)
     if len(x_data)==0: Rc=0
-=======
-    if len(x_data)>2: xc, yc, Rc = leastsq_circle(x_data, y_data)
-    if len(x_data)<=2: Rc=0 #Cannot fit circle with 0,1, or 2 points.
->>>>>>> origin/master
     if tube == 1:
         pt = 0.3*B*Rc
     if tube == 2:
         pt = 0.3*B2*Rc
-<<<<<<< HEAD
     if tube == 1:
         k = np.polyfit(r_tracker, z_data,1)[0]
     if tube == 2:
         k = np.polyfit(r_drift, z_data,1)[0]
     p = pt*np.sqrt(k*k+1)
     return pt, p
-=======
-    return pt
->>>>>>> origin/master
 
 #Iterates calculation of transverse momentum over a given amount of times,
 #and calculates a mean and a standard error for the estimated transverse
 #momentum for this particle.
-<<<<<<< HEAD
 def pt_datapoint(pt,pz, iter_num):
     rhit, phihit, zhit = gen_data(pt=pt, pz=pz)
     pt_data,pt_data2,p_data,p_data2 = [],[],[],[]
@@ -203,19 +185,10 @@ def pt_datapoint(pt,pz, iter_num):
         pt_data2 = np.append(pt_data2, pt_calc(rhit, phihit, zhit,2)[0])
         p_data = np.append(p_data, pt_calc(rhit, phihit, zhit,1)[1])
         p_data2 = np.append(p_data2, pt_calc(rhit, phihit, zhit,2)[1])
-=======
-def pt_datapoint(pt, iter_num):
-    rhit, phihit, zhit = gen_data(pt=pt)
-    pt_data,pt_data2 = [],[]
-    for i in range(iter_num):
-        pt_data = np.append(pt_data, pt_calc(rhit, phihit, zhit,1))
-        pt_data2 = np.append(pt_data2, pt_calc(rhit, phihit, zhit,2))
->>>>>>> origin/master
     pt_mean = np.mean(pt_data)
     pt_err = (np.std(pt_data))/(np.sqrt(iter_num))
     pt_mean2 = np.mean(pt_data2)
     pt_err2 = (np.std(pt_data2))/(np.sqrt(iter_num))
-<<<<<<< HEAD
     p_mean = np.mean(p_data)
     p_err = (np.std(p_data))/(np.sqrt(iter_num))
     p_mean2 = np.mean(p_data2)
@@ -229,23 +202,11 @@ def pt_data(pt_i, pt_f, pz, point_num, iter_num):
     stepsize = float((pt_f - pt_i))/point_num
     for i in range(point_num):
         temp1, temp2, temp3, temp4, temp5, temp6, temp7, temp8 = pt_datapoint(iter_num = iter_num, pt = pt_i + i*stepsize, pz=pz)
-=======
-    return pt_mean, pt_err, pt_mean2, pt_err2
-
-
-#Iterates previous function over a given range of transverse momenta.
-def pt_data(pt_i, pt_f, point_num, iter_num):
-    pt, pt_actual, pt_err, pt2, pt_err2 = [], [], [], [], []
-    stepsize = float((pt_f - pt_i))/point_num
-    for i in range(point_num):
-        temp1, temp2, temp3, temp4 = pt_datapoint(iter_num = iter_num, pt = pt_i + i*stepsize)
->>>>>>> origin/master
         pt = np.append(pt, temp1)
         pt_err = np.append(pt_err, temp2)
         pt2 = np.append(pt2, temp3)
         pt_err2 = np.append(pt_err2, temp4)
         pt_actual = np.append(pt_actual, pt_i +i*stepsize)
-<<<<<<< HEAD
         p = np.append(p,temp5)
         p_err = np.append(p_err,temp6)
         p2 = np.append(p2,temp7)
@@ -325,26 +286,5 @@ def plot_data(pt_i=3, pt_f=20, pz=0.5, point_num=100, iter_num=50): #Does not wo
     plt.plot(p_actual, p_dev/p_actual, 'b.' , label="$p$ Deviation, Tracker")
     plt.plot(p_actual, p2_dev/p_actual, 'r.' , label="$p$ Deviation, DT")
     plt.legend(loc='best',labelspacing=0.1,numpoints=1)
-=======
-    return pt, pt_err, pt2, pt_err2, pt_actual
-    
-#Plots the standard error in the transverse momentum and its deviation from
-#the actual value against the transverse momentum.
-def plot_data(pt_i=3, pt_f=20, point_num=100, iter_num=50): #Does not work if muon trapped in tracker.
-    pt, pt_err, pt2, pt_err2, pt_actual = pt_data(pt_i, pt_f, point_num, iter_num)
-    if all(pt) == 0: pt_dev = [0]*len(pt)
-    else: pt_dev = abs(pt-pt_actual)
-    pt2_dev = abs(pt2-pt_actual)
-    f, axarr = plt.subplots(2, sharex=True)
-    axarr[0].plot(pt_actual, pt_err, 'b.' , label="$p_t$ Error")
-    axarr[0].plot(pt_actual, pt_dev, 'r.' , label="$p_t$ Deviation")
-    axarr[1].plot(pt_actual, pt_err2, 'b.' , label="$p_t$ Error")
-    axarr[1].plot(pt_actual, pt2_dev, 'r.' , label="$p_t$ Deviation")
-    plt.xlabel('$p_t$')
-    plt.ylabel('$\Delta p_t$')
-    plt.legend(loc='best',labelspacing=0.1,numpoints=1)
-    plt.grid()
-    plt.title('$p_t$ error vs $p_t$')
->>>>>>> origin/master
     plt.show()
     
