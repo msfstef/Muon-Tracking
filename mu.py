@@ -11,15 +11,30 @@ import matplotlib.pyplot as plt
 # Features of CMS detector
 B = 3.8 # Magnetic field strength in 1st solenoid, units: Tesla
 B2 = 2.0 # Magnetic field strength in 2nd solenoid, units: Tesla. #~ Approximate, to be improved
+r_cal = 1.950 # Inner radius of calorimeter, units: meters
 r_sol = 2.950 # Radius of 1st solenoid, units: meters
-r_sol2 = r_sol + 3.550 # Radius of 2nd solenoid, units: meters
+r_sol2 = 7.500 # Radius of 2nd solenoid, units: meters
 z_sol = 3.00 # Length of solenoid, units: meters
+E_loss = -1.1 # Rate of energy loss with respect to distance in calorimeter, units : GeV/meters
+muon_mass = 0.106 # Mass of muon, units: GeV/c^2
 
 # Tracker layers (z = 0) [units: m]
 #~ Approximate locations, to be improved.
-r_tracker = [0.04,0.07,0.11,0.26,0.32,0.43,0.62,0.71,0.79,0.88,0.97,1.07]
-r_mb= [4.00,4.10,4.15,4.88,4.95,5.05,6.09,6.21,6.31,7.22,7.29,7.35]
-r_layers = np.append(r_tracker, r_mb)
+r_pixel = [0.04,0.07,0.11]
+r_tib=[0.26,0.32,0.43,0.62]
+r_tob=[0.71,0.79,0.88,0.97,1.07,1.14]
+r_tracker=np.append(np.append(r_pixel,r_tib), r_tob)
+
+
+r_mb1= [4.20,4.22,4.24,4.26,4.42,4.44,4.46,4.48]
+r_mb2= [5.00,5.02,5.04,5.06,5.24,5.26,5.28,5.30]
+r_mb3= [6.08,6.10,6.12,6.14,6.32,6.34,6.36,6.38]
+r_mb4= [7.10,7.12,7.14,7.16,7.34,7.36,7.38,7.40]
+
+r_drift=np.append(np.append(r_mb1,r_mb2),np.append(r_mb3,r_mb4))
+
+
+r_layers = np.append(r_tracker, r_drift)
 
 # Initial particle momentum
 # pz = momentum in z direction, units: GeV/c
@@ -122,18 +137,29 @@ def phi_calc(Rc, x_fin, y_fin, phi0, x0, y0, q):
     else:
         phi1 = np.arctan2(tangent_up,tangent_down) + np.pi/2
     return phi1
+    
+def energy_loss(Rc, x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, phi0, x0, y0, q, pt):
+    phi_cal = phi_calc(Rc, x_cal, y_cal, phi0, x0, y0, q)
+    phi1 = phi_calc(Rc, x_fin, y_fin, phi0, x0, y0, q)
+    T = (phi1-phi_cal)/(2*np.pi)
+    H = z_fin-z_cal
+    L = np.sqrt((np.pi*(2*Rc)*T)**2 + H**2)
+    pt_2 = np.sqrt(2*E_loss*muon_mass*L + pt*pt)
+    return pt_2, phi1
 
 
 # Calculates the path of the particle through a layer of the detector and the tracker hits.
 def path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, z_path, plot, crosspoint):
     # Create parameters of helix
-    s = np.linspace(0, 8*np.pi*Rc, 100000)  # path length
+    s = np.linspace(0, 8*np.pi*Rc, 2000000)  # path length
     z = s*np.sin(ldip)  + z0
     x = x0 -q*Rc*(np.cos(phi0 -q*s*np.cos(ldip)/Rc) - np.cos(phi0))
     y = y0 -q*Rc*(np.sin(phi0 -q*s*np.cos(ldip)/Rc) - np.sin(phi0))
     # Don't plot helix beyond tracker volume
     r = np.sqrt(x*x+y*y)
     for i in range(len(r)):
+        if layer == 0 and r[i]<r_cal and r[i+1]>r_cal:
+            x_cal,y_cal,z_cal =x[i],y[i],z[i]
         if layer == 0 and r[i] > r_sol:
             if plot: print "Crossing tracker at %ith point which has (r,z)=(%f,%f) (x,y)=(%f,%f) z/r=%f pz/pt=%f Rc=%f" % (i,r[i],z[i],x[i],y[i],z[i]/r[i],pz/pt,Rc)
             crosspoint = i
@@ -143,18 +169,19 @@ def path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, 
             x_path= np.append(x_path, x[:i])
             y_path= np.append(y_path, y[:i])
             z_path= np.append(z_path, z[:i])
-            return x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint			
+            return x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint			
             break
         if layer == 0 and abs(z[i]) > z_sol:
             if plot: print "Truncating at %ith point which has (r,z)=(%f,%f) (x,y)=(%f,%f) z/r=%f pz/pt=%f Rc=%f" % (i,r[i],z[i],x[i],y[i],z[i]/r[i],pz/pt,Rc)                    
             crosspoint = i
+            x_cal,y_cal,z_cal =0,0,0
             x_fin = x[i]
             y_fin = y[i]
             z_fin = z[i]
             x_path= np.append(x_path, x[:i])
             y_path= np.append(y_path, y[:i])
             z_path= np.append(z_path, z[:i])
-            return x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint
+            return x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint
             break		
         if layer == 1 and  r[i] > r_sol2 or abs(z[i]) > z_sol:
             if plot: print "Truncating at %ith point which has (r,z)=(%f,%f) (x,y)=(%f,%f) z/r=%f pz/pt=%f Rc=%f" % (i+crosspoint,r[i],z[i],x[i],y[i],z[i]/r[i],pz/pt,Rc)
@@ -169,17 +196,23 @@ def path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, 
 def particle_path(x0, y0, z0, phi0, q, pt, pz, x_path, y_path, z_path, plot):
     # Calculate radius of curvature
     Rc = pt / (0.3*B) # units: meters
-    Rc2 = pt / (0.3*B2) # units: meters
+#    Rc2 = pt / (0.3*B2) # units: meters
     # Calculate dip angle
     ldip = np.arctan(pz/pt)
     layer = 0
-    x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint = path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, z_path, plot, crosspoint=0)
+    x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint = path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, z_path, plot, crosspoint=0)
     if np.sqrt(x_fin*x_fin + y_fin*y_fin) < r_sol:
         return x_path, y_path, z_path
+#    else :
+#        layer = 1
+#        phi1 = phi_calc(Rc, x_fin, y_fin, phi0, x0, y0, q)
+#        x_path, y_path, z_path = path_creation(Rc2, ldip, x_fin, y_fin, z_fin, phi1, -q, pt, pz, layer, x_path, y_path, z_path, plot, crosspoint)
+#        return x_path, y_path, z_path
     else :
         layer = 1
-        phi1 = phi_calc(Rc, x_fin, y_fin, phi0, x0, y0, q)
-        x_path, y_path, z_path = path_creation(Rc2, ldip, x_fin, y_fin, z_fin, phi1, -q, pt, pz, layer, x_path, y_path, z_path, plot, crosspoint)
+        pt2, phi1 = energy_loss(Rc, x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, phi0, x0, y0, q, pt)
+        Rc2 = pt2/(0.3*B2) # units: meters
+        x_path, y_path, z_path = path_creation(Rc2, ldip, x_fin, y_fin, z_fin, phi1, -q, pt2, pz, layer, x_path, y_path, z_path, plot, crosspoint)
         return x_path, y_path, z_path
    
    
@@ -192,6 +225,7 @@ def hit_calc(xhit, yhit, zhit, x_path, y_path, z_path, r_layers):
                 xhit.append(0.5*(x_path[i]+x_path[i-1]))
                 yhit.append(0.5*(y_path[i]+y_path[i-1]))
                 zhit.append(0.5*(z_path[i]+z_path[i-1]))
+                break
     return xhit, yhit, zhit
 		
 
