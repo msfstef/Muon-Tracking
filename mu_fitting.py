@@ -1,5 +1,7 @@
 from mu import *
 from scipy import optimize
+import time
+import sys
 
 r_pixel = [0.04,0.07,0.11]
 r_tib=[0.26,0.32,0.43,0.62]
@@ -185,14 +187,14 @@ def pt_datapoint(pt,pz, iter_num):
         pt_data2 = np.append(pt_data2, pt_calc(rhit, phihit, zhit,2)[0])
         p_data = np.append(p_data, pt_calc(rhit, phihit, zhit,1)[1])
         p_data2 = np.append(p_data2, pt_calc(rhit, phihit, zhit,2)[1])
-    pt_mean = np.mean(pt_data)
-    pt_err = (np.std(pt_data))/(np.sqrt(iter_num))
-    pt_mean2 = np.mean(pt_data2)
-    pt_err2 = (np.std(pt_data2))/(np.sqrt(iter_num))
     p_mean = np.mean(p_data)
     p_err = (np.std(p_data))/(np.sqrt(iter_num))
-    p_mean2 = np.mean(p_data2)
+    p_mean2 = np.mean(p_data2) - E_loss #Adjusting for calorimeter energy loss.
     p_err2 = (np.std(p_data2))/(np.sqrt(iter_num))
+    pt_mean = np.mean(pt_data)
+    pt_err = (np.std(pt_data))/(np.sqrt(iter_num))
+    pt_mean2 = np.mean(pt_data2) -(pt_mean/p_mean)*E_loss #Adjusting for calorimeter energy loss.
+    pt_err2 = (np.std(pt_data2))/(np.sqrt(iter_num))
     return pt_mean, pt_err, pt_mean2, pt_err2, p_mean, p_err, p_mean2, p_err2
 
 
@@ -211,18 +213,21 @@ def pt_data(pt_i, pt_f, pz, point_num, iter_num):
         p_err = np.append(p_err,temp6)
         p2 = np.append(p2,temp7)
         p_err2 = np.append(p_err2,temp8)
+        #Progress bar.
+        sys.stdout.write("\r%d%%" % i)
+        sys.stdout.flush()
     return pt, pt_err, pt2, pt_err2, p, p_err, p2, p_err2, pt_actual
     
 #Plots the standard error in the transverse momentum and its deviation from
 #the actual value against the transverse momentum.
-def plot_data(pt_i=3, pt_f=20, pz=0.5, point_num=100, iter_num=50): #Does not work if muon trapped in tracker.
+def plot_data(pt_i=5, pt_f=20, pz=0.5, point_num=100, iter_num=50): #Does not work if muon trapped in tracker.
     pt, pt_err, pt2, pt_err2, p, p_err, p2, p_err2, pt_actual = pt_data(pt_i, pt_f, pz, point_num, iter_num)
     p_actual = np.sqrt(pt_actual*pt_actual +pz*pz)
     if all(pt) == 0: pt_dev = [0]*len(pt)
-    else: pt_dev = abs(pt-pt_actual)
-    pt2_dev = abs(pt2-pt_actual)
-    p_dev = abs(p-p_actual)
-    p2_dev = abs(p2-p_actual)
+    else: pt_dev = (pt-pt_actual)
+    pt2_dev = (pt2-pt_actual)
+    p_dev = (p-p_actual)
+    p2_dev = (p2-p_actual)
     ##Plotting transverse momentum.
     #plt.figure(1)
     #plt.subplot(211)

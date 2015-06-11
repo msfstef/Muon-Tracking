@@ -15,7 +15,8 @@ r_cal = 1.950 # Inner radius of calorimeter, units: meters
 r_sol = 2.950 # Radius of 1st solenoid, units: meters
 r_sol2 = 7.500 # Radius of 2nd solenoid, units: meters
 z_sol = 3.00 # Length of solenoid, units: meters
-E_loss = -1.1 # Rate of energy loss with respect to distance in calorimeter, units : GeV/meters
+E_loss = -1.5 # Rate of energy loss with respect to distance in calorimeter, units : GeV/meters
+E_loss_err = 0.5 # Standard deviation of energy loss, units : GeV/meters
 muon_mass = 0.106 # Mass of muon, units: GeV/c^2
 
 # Tracker layers (z = 0) [units: m]
@@ -137,21 +138,24 @@ def phi_calc(Rc, x_fin, y_fin, phi0, x0, y0, q):
     else:
         phi1 = np.arctan2(tangent_up,tangent_down) + np.pi/2
     return phi1
-    
-def energy_loss(Rc, x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, phi0, x0, y0, q, pt):
+
+# Calculates the total loss in momentum of the particle due to the energy loss in the calorimeter.    
+def energy_loss(Rc, x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, phi0, x0, y0, q, pt, pz):
     phi_cal = phi_calc(Rc, x_cal, y_cal, phi0, x0, y0, q)
     phi1 = phi_calc(Rc, x_fin, y_fin, phi0, x0, y0, q)
     T = (phi1-phi_cal)/(2*np.pi)
     H = z_fin-z_cal
     L = np.sqrt((np.pi*(2*Rc)*T)**2 + H**2)
-    pt_2 = np.sqrt(2*E_loss*muon_mass*L + pt*pt)
-    return pt_2, phi1
+    p_tot = np.sqrt(pt*pt + pz*pz)
+    pz_2 = (pz/p_tot)*(np.random.normal(E_loss,E_loss_err))*L + pz
+    pt_2 = (pt/p_tot)*(np.random.normal(E_loss,E_loss_err))*L + pt
+    return pt_2, pz_2, phi1
 
 
 # Calculates the path of the particle through a layer of the detector and the tracker hits.
-def path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, z_path, plot, crosspoint):
+def path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, z_path, plot, iterations, crosspoint):
     # Create parameters of helix
-    s = np.linspace(0, 8*np.pi*Rc, 2000000)  # path length
+    s = np.linspace(0, 3*np.pi*Rc, iterations)  # path length
     z = s*np.sin(ldip)  + z0
     x = x0 -q*Rc*(np.cos(phi0 -q*s*np.cos(ldip)/Rc) - np.cos(phi0))
     y = y0 -q*Rc*(np.sin(phi0 -q*s*np.cos(ldip)/Rc) - np.sin(phi0))
@@ -193,14 +197,14 @@ def path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, 
 			
 	
 # Creates full, continuous path of particle throughout detector.
-def particle_path(x0, y0, z0, phi0, q, pt, pz, x_path, y_path, z_path, plot):
+def particle_path(x0, y0, z0, phi0, q, pt, pz, x_path, y_path, z_path, plot, iterations):
     # Calculate radius of curvature
     Rc = pt / (0.3*B) # units: meters
 #    Rc2 = pt / (0.3*B2) # units: meters
     # Calculate dip angle
     ldip = np.arctan(pz/pt)
     layer = 0
-    x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint = path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, z_path, plot, crosspoint=0)
+    x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint = path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, z_path, plot, iterations, crosspoint=0)
     if np.sqrt(x_fin*x_fin + y_fin*y_fin) < r_sol:
         return x_path, y_path, z_path
 #    else :
@@ -210,9 +214,9 @@ def particle_path(x0, y0, z0, phi0, q, pt, pz, x_path, y_path, z_path, plot):
 #        return x_path, y_path, z_path
     else :
         layer = 1
-        pt2, phi1 = energy_loss(Rc, x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, phi0, x0, y0, q, pt)
+        pt2,pz2, phi1 = energy_loss(Rc, x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, phi0, x0, y0, q, pt, pz)
         Rc2 = pt2/(0.3*B2) # units: meters
-        x_path, y_path, z_path = path_creation(Rc2, ldip, x_fin, y_fin, z_fin, phi1, -q, pt2, pz, layer, x_path, y_path, z_path, plot, crosspoint)
+        x_path, y_path, z_path = path_creation(Rc2, ldip, x_fin, y_fin, z_fin, phi1, -q, pt2, pz2, layer, x_path, y_path, z_path, plot, iterations, crosspoint)
         return x_path, y_path, z_path
    
    
@@ -251,13 +255,34 @@ def plot_path_3D(x_path, y_path, z_path, xhit, yhit, zhit, ax3):
     # Show the figures we've made
     plt.show()
 
+def iter_calc(pt):
+    if pt <= 100 :
+        iterations = 2*10**5
+    if pt > 100 and pt <= 500:
+        iterations = 1*10**6        
+    if pt > 500 and pt <= 1500:
+        iterations = 2*10**6
+    if pt > 1500 and pt <= 2500:
+        iterations = 2*10**6
+    if pt > 2500 and pt <= 3500:
+        iterations = 3*10**6
+    if pt > 3500 and pt <= 4500:
+        iterations = 4*10**6
+    if pt > 4500 and pt <= 5500:
+        iterations = 5*10**6
+    if pt > 5500 and pt <= 6500:
+        iterations = 6*10**6
+    if pt > 6500:
+        iterations = 8*10**6
+    return iterations
 
 # Combines all previous functions, takes initial conditions of particle as arguments and plots its path in desired way.
 # If plot is set to False, function only returns lists of the coordinates of hit locations.
-def muon_path(x0=0., y0=0., z0=0., phi0=0., pt=3., pz=1., q=-1, do3D=False, plot=True):
+def muon_path(x0=0., y0=0., z0=0., phi0=0., pt=4., pz=1., q=-1, do3D=False, plot=True):
     phi0 = phi0 -np.pi/2 # 90 degree conventional correction
     x_path,y_path,z_path,xhit,yhit,zhit = [], [], [], [], [], []
-    x_path,y_path,z_path = particle_path(x0, y0, z0, phi0, q, pt, pz, x_path, y_path, z_path, plot)
+    iterations = iter_calc(pt)
+    x_path,y_path,z_path = particle_path(x0, y0, z0, phi0, q, pt, pz, x_path, y_path, z_path, plot, iterations)
     xhit,yhit,zhit = hit_calc(xhit, yhit, zhit, x_path, y_path, z_path, r_layers)
     if plot:
         plot_tracker_path(x_path, y_path, z_path, xhit, yhit, zhit)
