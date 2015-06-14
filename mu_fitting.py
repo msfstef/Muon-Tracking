@@ -1,5 +1,5 @@
 from mu import *
-from scipy import optimize
+from scipy import optimize,misc
 import time
 import sys
 
@@ -158,6 +158,7 @@ def plot_data_circle(x,y, xc, yc, R):
     plt.grid()
     plt.title('Least Squares Circle')
     plt.show()
+    
 #===================================================================#  
 
 #Calculates transverse momentum by fitting circular path in smeared data.
@@ -174,7 +175,10 @@ def pt_calc(rhit, phihit, zhit,tube):
     if tube == 2:
         k = np.polyfit(r_drift, z_data,1)[0]
     p = pt*np.sqrt(k*k+1)
+   #print Rc
     return pt, p
+    
+
 
 #Iterates calculation of transverse momentum over a given amount of times,
 #and calculates a mean and a standard error for the estimated transverse
@@ -293,3 +297,27 @@ def plot_data(pt_i=5, pt_f=20, pz=0.5, point_num=100, iter_num=50): #Does not wo
     plt.legend(loc='best',labelspacing=0.1,numpoints=1)
     plt.show()
     
+
+
+#Plots histograms of momentum measurements for specific actual momentum, useful to deduce distributions.
+def poutsoktonos(pt,pz, iter_num):
+    pt_tracker_list, pt_dt_list = [],[]
+    rhit, phihit, zhit = gen_data(pt=pt, pz=pz)
+    for i in range(iter_num):
+        pt_tracker_list = np.append(pt_tracker_list,pt_calc(rhit,phihit,zhit,1))
+        pt_dt_list = np.append(pt_dt_list,pt_calc(rhit,phihit,zhit,2))
+                
+        #Progress bar.
+        sys.stdout.write("\r%d%%" % i)
+        sys.stdout.flush()
+    bins=np.histogram(np.hstack((pt_tracker_list,pt_dt_list)), bins=100)[1]
+    plt.hist(pt_tracker_list,bins=bins, color='b', alpha=1, label='Tracker Data')
+    plt.hist(pt_dt_list, bins=bins, color='r', alpha=0.5, label='Drift Tube Data')
+    plt.title("$p_t$ Histogram")
+    plt.xlabel("$p_t$ / $GeVc^{-1}$")
+    plt.ylabel("Frequency")
+    plt.axvline(x=pt, color='k', linewidth=2,ls='dashed', label='Actual Transverse Momentum')
+    plt.legend()
+    print 'pt tracker mean' , np.mean(pt_tracker_list)
+    print 'pt drift tube mean' , np.mean(pt_dt_list)
+    plt.show()

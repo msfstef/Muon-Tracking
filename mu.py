@@ -200,22 +200,19 @@ def path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, 
 def particle_path(x0, y0, z0, phi0, q, pt, pz, x_path, y_path, z_path, plot, iterations):
     # Calculate radius of curvature
     Rc = pt / (0.3*B) # units: meters
-#    Rc2 = pt / (0.3*B2) # units: meters
-    # Calculate dip angle
+    #print 'Rc', Rc
+    #Rc2 = pt / (0.3*B2) # units: meters
+    #Calculate dip angle
     ldip = np.arctan(pz/pt)
     layer = 0
     x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint = path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, z_path, plot, iterations, crosspoint=0)
     if np.sqrt(x_fin*x_fin + y_fin*y_fin) < r_sol:
         return x_path, y_path, z_path
-#    else :
-#        layer = 1
-#        phi1 = phi_calc(Rc, x_fin, y_fin, phi0, x0, y0, q)
-#        x_path, y_path, z_path = path_creation(Rc2, ldip, x_fin, y_fin, z_fin, phi1, -q, pt, pz, layer, x_path, y_path, z_path, plot, crosspoint)
-#        return x_path, y_path, z_path
     else :
         layer = 1
         pt2,pz2, phi1 = energy_loss(Rc, x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, phi0, x0, y0, q, pt, pz)
         Rc2 = pt2/(0.3*B2) # units: meters
+        #print 'Rc2', Rc2
         x_path, y_path, z_path = path_creation(Rc2, ldip, x_fin, y_fin, z_fin, phi1, -q, pt2, pz2, layer, x_path, y_path, z_path, plot, iterations, crosspoint)
         return x_path, y_path, z_path
    
@@ -255,6 +252,8 @@ def plot_path_3D(x_path, y_path, z_path, xhit, yhit, zhit, ax3):
     # Show the figures we've made
     plt.show()
 
+
+#Optimizes line-resolution used to calculate hit-points depending on momentum.
 def iter_calc(pt):
     if pt <= 100 :
         iterations = 2*10**5
@@ -289,3 +288,38 @@ def muon_path(x0=0., y0=0., z0=0., phi0=0., pt=4., pz=1., q=-1, do3D=False, plot
         if do3D: plot_tracker_path_3D(x_path, y_path, z_path, xhit, yhit, zhit)
     else: 
         return xhit, yhit, zhit
+        
+        
+        
+#=============================================#
+#PARAVIEW FUNCTIONS#
+def muon_path_pv(x0=0., y0=0., z0=0., phi0=0., pt=4., pz=0.5, q=-1, do3D=False, plot=True):
+    phi0 = phi0 -np.pi/2 # 90 degree conventional correction
+    x_path,y_path,z_path,xhit,yhit,zhit = [], [], [], [], [], []
+    iterations = iter_calc(pt)
+    x_path,y_path,z_path = particle_path(x0, y0, z0, phi0, q, pt, pz, x_path, y_path, z_path, plot, iterations)
+    xhit,yhit,zhit = hit_calc(xhit, yhit, zhit, x_path, y_path, z_path, r_layers)
+    plot_tracker_path_3D(x_path, y_path, z_path, xhit, yhit, zhit)
+    return x_path,y_path,z_path
+    
+import csv
+
+def create_file(pt,pz,phi0):
+    csvfile = "DATA/datax.csv"
+    csvfile2 = "DATA/datay.csv"
+    csvfile3 = "DATA/dataz.csv"
+    x_data,y_data,z_data = muon_path_pv(pt=pt, pz=pz, phi0=phi0)
+    data = zip(x_data,y_data,z_data)
+    with open(csvfile, "w") as output:
+        writer = csv.writer(output, lineterminator='\n')
+        for val in x_data:
+            writer.writerow([val])
+    with open(csvfile2, "w") as output:
+        writer = csv.writer(output, lineterminator='\n')
+        for val in y_data:
+            writer.writerow([val])
+    with open(csvfile3, "w") as output:
+        writer = csv.writer(output, lineterminator='\n')
+        for val in z_data:
+            writer.writerow([val])   
+        
