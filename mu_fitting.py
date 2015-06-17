@@ -184,9 +184,10 @@ def pt_calc(rhit, phihit, zhit,tube):
 #and calculates a mean and a standard error for the estimated transverse
 #momentum for this particle.
 def pt_datapoint(pt,pz, iter_num):
-    rhit, phihit, zhit = gen_data(pt=pt, pz=pz)
+    #rhit, phihit, zhit = gen_data(pt=pt, pz=pz)
     pt_data,pt_data2,p_data,p_data2 = [],[],[],[]
     for i in range(iter_num):
+        rhit, phihit, zhit = gen_data(pt=pt, pz=pz)
         pt_data = np.append(pt_data, pt_calc(rhit, phihit, zhit,1)[0])
         pt_data2 = np.append(pt_data2, pt_calc(rhit, phihit, zhit,2)[0])
         p_data = np.append(p_data, pt_calc(rhit, phihit, zhit,1)[1])
@@ -302,10 +303,14 @@ def plot_data(pt_i=5, pt_f=20, pz=0.5, point_num=100, iter_num=50): #Does not wo
 #Plots histograms of momentum measurements for specific actual momentum, useful to deduce distributions.
 def poutsoktonos(pt,pz, iter_num):
     pt_tracker_list, pt_dt_list = [],[]
-    rhit, phihit, zhit = gen_data(pt=pt, pz=pz)
+  #  rhit, phihit, zhit = gen_data(pt=pt, pz=pz)
     for i in range(iter_num):
-        pt_tracker_list = np.append(pt_tracker_list,pt_calc(rhit,phihit,zhit,1))
-        pt_dt_list = np.append(pt_dt_list,pt_calc(rhit,phihit,zhit,2))
+        rhit, phihit, zhit = gen_data(pt=pt, pz=pz)
+        temp = pt_calc(rhit,phihit,zhit,1)
+        pt_dt = pt_calc(rhit,phihit,zhit,2)[0] - (temp[0]/temp[1])*E_loss
+        
+        pt_tracker_list = np.append(pt_tracker_list,pt_calc(rhit,phihit,zhit,1)[0])
+        pt_dt_list = np.append(pt_dt_list, pt_dt)
                 
         #Progress bar.
         sys.stdout.write("\r%d%%" % i)
@@ -321,3 +326,131 @@ def poutsoktonos(pt,pz, iter_num):
     print 'pt tracker mean' , np.mean(pt_tracker_list)
     print 'pt drift tube mean' , np.mean(pt_dt_list)
     plt.show()
+
+    
+#=============================================#
+#IMPORTING DATA#
+
+def import_data():
+    raw = np.fromfile('C:\Users\Nikos\Documents\GitHub\Muon-Tracking\muon_list.txt', sep=' ')
+    raw_split = np.split(raw,40000)
+    return raw_split
+
+def pt_calc2(rhit, phihit, zhit,tube):
+    x_data, y_data, z_data = smear_data(rhit, phihit, zhit, tube)
+    if len(x_data)>0: xc, yc, Rc = leastsq_circle(x_data, y_data)
+    if len(x_data)==0: Rc=0
+    if tube == 1:
+        pt = 0.3*B*Rc
+    if tube == 2:
+        pt = 0.3*B2*Rc
+    if tube == 1:
+        k = np.polyfit(r_tracker, z_data,1)[0]
+    if tube == 2:
+        k = np.polyfit(r_drift, z_data,1)[0]
+    pz= pt*k
+    return pt, pz
+    
+    
+def pt_datapoint2(pt,pz,phi,charge, iter_num):
+    rhit, phihit, zhit = gen_data(pt=pt, pz=pz, phi0=phi, q=charge)
+    pt_data,pt_data2,pz_data,pz_data2 = [],[],[],[]
+    for i in range(iter_num):
+        pt_data = np.append(pt_data, pt_calc2(rhit, phihit, zhit,1)[0])
+        pt_data2 = np.append(pt_data2, pt_calc2(rhit, phihit, zhit,2)[0])
+        pz_data = np.append(pz_data, pt_calc2(rhit, phihit, zhit,1)[1])
+        pz_data2 = np.append(pz_data2, pt_calc2(rhit, phihit, zhit,2)[1])
+    phi0 = phihit[0]
+    if phihit[1]>phihit[0] : q = -1
+    if phihit[1]<phihit[0] : q = 1
+    p2 = np.sqrt(pt_data2*pt_data2 + pz_data2*pz_data2)
+    p2_mean = np.mean(p2)
+    pz_mean = np.mean(pz_data)
+    pz_mean2 = np.mean(pz_data2) - (pz_mean/p2_mean)*E_loss #Adjusting for calorimeter energy loss.
+    pt_mean = np.mean(pt_data)
+    pt_mean2 = np.mean(pt_data2) -(pt_mean/p2_mean)*E_loss #Adjusting for calorimeter energy loss.
+    return pt_mean, pt_mean2, pz_mean, pz_mean2, phi0, q
+    
+def find_fourvector(pt_d,pz_d,phi,charge,iter_num):
+    pt, pt2, pz, pz2, phi0, q = pt_datapoint2(pt_d,pz_d,phi,charge,iter_num)
+    p_d= np.sqrt(pt_d*pt_d + pz_d*pz_d)
+    if p_d <200: 
+        p= np.sqrt(pt*pt + pz*pz)
+        px = pt*np.cos(phi0)
+        py = pt*np.sin(phi0)
+        vector = np.array([p, px, py, pz]) 
+    if p_d >= 200: 
+        p= np.sqrt(pt2*pt2 + pz2*pz2)
+        px = pt2*np.cos(phi0)
+        py = pt2*np.sin(phi0)
+        vector = np.array([p, px, py, pz2])
+    return vector
+    
+def pt_d_calc(data, i):
+    pt = np.sqrt((data[i])[1]**2 +(data[i])[2]**2)
+    return pt 
+
+def phi0_d_calc(data,i):
+    phi0 = np.arctan2((data[i])[2],(data[i])[1])
+    return phi0
+    
+def find_higgs(points, iter_num):
+    mass_list, mass_listz1, mass_listz2 = [],[],[]
+    data = import_data()
+    for i in range(points): 
+        muon1 = find_fourvector(pt_d_calc(data,4*i),(data[4*i])[3],phi0_d_calc(data,4*i), (data[4*i])[0], iter_num)
+        muon2 = find_fourvector(pt_d_calc(data,4*i+1),(data[4*i+1])[3],phi0_d_calc(data,4*i+1), (data[4*i+1])[0], iter_num)
+        muon3 = find_fourvector(pt_d_calc(data,4*i+2),(data[4*i+2])[3],phi0_d_calc(data,4*i+2), (data[4*i+2])[0], iter_num)
+        muon4 = find_fourvector(pt_d_calc(data,4*i+3),(data[4*i+3])[3],phi0_d_calc(data,4*i+3), (data[4*i+3])[0], iter_num)
+        
+        
+        z_boson1 = muon1 + muon2
+        z_boson2 = muon3 + muon4
+        mass_z1 = np.sqrt((z_boson1[0])**2 - ((z_boson1[1])**2 +(z_boson1[2])**2 +(z_boson1[3])**2))
+        #print mass_z1
+        #print z_boson1
+        #print z_boson2
+        mass_listz1 = np.append(mass_listz1, mass_z1)
+        mass_z2 = np.sqrt((z_boson2[0])**2 - ((z_boson2[1])**2 +(z_boson2[2])**2 +(z_boson2[3])**2))
+        #print mass_z2
+        mass_listz2 = np.append(mass_listz2, mass_z2)
+        
+        
+        higgs = z_boson1 + z_boson2
+        #print higgs
+        mass_h = np.sqrt((higgs[0])**2 - ((higgs[1])**2 +(higgs[2])**2 +(higgs[3])**2))
+        #print mass_h
+        mass_list = np.append(mass_list, mass_h)
+            
+        #Progress bar.
+        sys.stdout.write("\r%d%%" % i)
+        sys.stdout.flush()
+    mass_mean = np.mean(mass_list)
+    mass_mean_z1 = np.mean(mass_listz1)
+    mass_mean_z2 = np.mean(mass_listz2)
+    return mass_list, mass_listz1, mass_listz2
+    
+def plot_hist_higgs(points, iter_no):
+    h_list, z1_list, z2_list = find_higgs(points, iter_no)
+    plt.figure(1)
+    bins=np.histogram(z1_list, bins=50)[1]
+    plt.hist(z1_list,bins=bins, color='b',normed = False, alpha=1, label='Z Boson')
+    #plt.hist(z2_list, color='r',normed = False, alpha=0.5, label='Z Boson 2')
+    plt.title("Z Mass Histogram")
+    plt.xlabel("$m$ / $GeVc^{-2}$")
+    plt.ylabel("Frequency")
+    plt.legend()
+    plt.show()
+
+    plt.figure(2)
+    plt.hist(h_list, color='g',normed = False, alpha=1, label='Higgs')
+    plt.title("Higgs Mass Histogram")
+    plt.xlabel("$m$ / $GeVc^{-2}$")
+    plt.ylabel("Frequency")
+    plt.axvline(x=126, color='k', linewidth=2,ls='dashed', label='Actual Higgs Mass')
+    plt.legend()
+    print 'higgs mean' , np.mean(h_list)
+    print 'z1 and z2 mean' , np.mean(z1_list), np.mean(z2_list)
+    plt.show()
+    return h_list, z1_list   
+        

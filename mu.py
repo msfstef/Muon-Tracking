@@ -14,7 +14,7 @@ B2 = 2.0 # Magnetic field strength in 2nd solenoid, units: Tesla. #~ Approximate
 r_cal = 1.950 # Inner radius of calorimeter, units: meters
 r_sol = 2.950 # Radius of 1st solenoid, units: meters
 r_sol2 = 7.500 # Radius of 2nd solenoid, units: meters
-z_sol = 3.00 # Length of solenoid, units: meters
+z_sol = 1000000.00 # Length of solenoid, units: meters
 E_loss = -1.5 # Rate of energy loss with respect to distance in calorimeter, units : GeV/meters
 E_loss_err = 0.5 # Standard deviation of energy loss, units : GeV/meters
 muon_mass = 0.106 # Mass of muon, units: GeV/c^2
@@ -92,14 +92,22 @@ def solenoid_points(ax2):
     # Create 2nd solenoid points
     x_grid2=np.linspace(-r_sol2, r_sol2, 200)
     y_grid2 = np.sqrt(r_sol2*r_sol2-x_grid2*x_grid2)
+
+    # Create Calorimeter points
+    x_grid3=np.linspace(-r_cal, r_cal, 200)
+    y_grid3 = np.sqrt(r_cal*r_cal-x_grid3*x_grid3)
     
     # Plot solenoid points in 2d
-    ax2.plot(x_grid,y_grid,color='b',label='CMS solenoid')
+    ax2.plot(x_grid,y_grid,color='b',label='Solenoid Magnet')
     ax2.plot(x_grid,-y_grid,color='b')
     
     # Plot 2nd solenoid points in 2d
-    ax2.plot(x_grid2,y_grid2,color='c',label='Muon solenoid')
+    ax2.plot(x_grid2,y_grid2,color='c',label='CMS Outer Edge')
     ax2.plot(x_grid2,-y_grid2,color='c')
+    
+    # Plot CMS points in 2d
+    ax2.plot(x_grid3,y_grid3,color='g',label='Calorimeter Inner Edge')
+    ax2.plot(x_grid3,-y_grid3,color='g')
 
 
 # Creates the detector in 3D.		
@@ -203,7 +211,7 @@ def particle_path(x0, y0, z0, phi0, q, pt, pz, x_path, y_path, z_path, plot, ite
     #print 'Rc', Rc
     #Rc2 = pt / (0.3*B2) # units: meters
     #Calculate dip angle
-    ldip = np.arctan(pz/pt)
+    ldip = np.arctan2(pz,pt)
     layer = 0
     x_cal, y_cal, z_cal, x_fin, y_fin, z_fin, x_path, y_path, z_path, crosspoint = path_creation(Rc, ldip, x0, y0, z0, phi0, q, pt, pz, layer, x_path, y_path, z_path, plot, iterations, crosspoint=0)
     if np.sqrt(x_fin*x_fin + y_fin*y_fin) < r_sol:
@@ -321,5 +329,18 @@ def create_file(pt,pz,phi0):
     with open(csvfile3, "w") as output:
         writer = csv.writer(output, lineterminator='\n')
         for val in z_data:
-            writer.writerow([val])   
+            writer.writerow([val])
+            
+            
+#=============================================#
+#IMPORTING DATA#
+
+def import_data():
+    raw = np.fromfile('C:\Users\Nikos\Documents\GitHub\Muon-Tracking\muon_list.txt', sep=' ')
+    raw_split = np.split(raw,40000)
+    return raw_split
+
+
+
+    
         
